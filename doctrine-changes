@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+import os
+import hashlib
+import sys
+
+ignored_queries_hashes = [
+    '8f946c691a6327673c4d23642606da39',
+    'fb70d26387839c239acd710e80af2535',
+    'aa3f81d17939bebdf6c2bede082efbee',
+    '0937f4806a484c36bda35dc4e86b6096',
+    'd41d8cd98f00b204e9800998ecf8427e'
+]
+
+doctrine = os.popen(
+    'vendor/bin/doctrine orm:schema-tool:update --dump-sql'
+)
+
+queries = doctrine.read().split('\n')
+error_code = doctrine.close()
+if error_code:
+    print('Error executing doctrine.')
+    sys.exit(1)
+
+new_queries = 0
+for query in queries:
+    md5 = hashlib.md5(query).hexdigest()
+    if (md5 not in ignored_queries_hashes):
+        new_queries += 1
+        print("$m->add(");
+        print('    "' + query + '",')
+        print('    "' + md5 + '",')
+        print('    null,')
+        print('    NOT_BACKWARDS_COMPATIBLE')
+        print(');')
+        print('')
+
+if (new_queries > 0):
+    print('New queries: %i' % new_queries)
+    sys.exit(1)
+else:
+    print('No new queries.')
+    sys.exit(0)
